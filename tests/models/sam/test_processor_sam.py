@@ -30,7 +30,7 @@ from transformers.utils import is_tf_available, is_torch_available, is_vision_av
 if is_vision_available():
     from PIL import Image
 
-    from transformers import AutoProcessor, SamImageProcessor, SamProcessor
+    from transformers import AutoProcessor, RobustSamImageProcessor, RobustSamProcessor
 
 if is_torch_available():
     import torch
@@ -41,11 +41,11 @@ if is_tf_available():
 
 @require_vision
 @require_torchvision
-class SamProcessorTest(unittest.TestCase):
+class RobustSamProcessorTest(unittest.TestCase):
     def setUp(self):
         self.tmpdirname = tempfile.mkdtemp()
-        image_processor = SamImageProcessor()
-        processor = SamProcessor(image_processor)
+        image_processor = RobustSamImageProcessor()
+        processor = RobustSamProcessor(image_processor)
         processor.save_pretrained(self.tmpdirname)
 
     def get_image_processor(self, **kwargs):
@@ -71,20 +71,20 @@ class SamProcessorTest(unittest.TestCase):
         return mask_inputs
 
     def test_save_load_pretrained_additional_features(self):
-        processor = SamProcessor(image_processor=self.get_image_processor())
+        processor = RobustSamProcessor(image_processor=self.get_image_processor())
         processor.save_pretrained(self.tmpdirname)
 
         image_processor_add_kwargs = self.get_image_processor(do_normalize=False, padding_value=1.0)
 
-        processor = SamProcessor.from_pretrained(self.tmpdirname, do_normalize=False, padding_value=1.0)
+        processor = RobustSamProcessor.from_pretrained(self.tmpdirname, do_normalize=False, padding_value=1.0)
 
         self.assertEqual(processor.image_processor.to_json_string(), image_processor_add_kwargs.to_json_string())
-        self.assertIsInstance(processor.image_processor, SamImageProcessor)
+        self.assertIsInstance(processor.image_processor, RobustSamImageProcessor)
 
     def test_image_processor_no_masks(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
 
         image_input = self.prepare_image_inputs()
 
@@ -108,7 +108,7 @@ class SamProcessorTest(unittest.TestCase):
     def test_image_processor_with_masks(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
 
         image_input = self.prepare_image_inputs()
         mask_input = self.prepare_mask_inputs()
@@ -126,7 +126,7 @@ class SamProcessorTest(unittest.TestCase):
     def test_post_process_masks(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
         dummy_masks = [torch.ones((1, 3, 5, 5))]
 
         original_sizes = [[1764, 2646]]
@@ -153,11 +153,11 @@ class SamProcessorTest(unittest.TestCase):
 
 @require_vision
 @require_tf
-class TFSamProcessorTest(unittest.TestCase):
+class TFRobustSamProcessorTest(unittest.TestCase):
     def setUp(self):
         self.tmpdirname = tempfile.mkdtemp()
-        image_processor = SamImageProcessor()
-        processor = SamProcessor(image_processor)
+        image_processor = RobustSamImageProcessor()
+        processor = RobustSamProcessor(image_processor)
         processor.save_pretrained(self.tmpdirname)
 
     def get_image_processor(self, **kwargs):
@@ -178,20 +178,20 @@ class TFSamProcessorTest(unittest.TestCase):
         return image_inputs
 
     def test_save_load_pretrained_additional_features(self):
-        processor = SamProcessor(image_processor=self.get_image_processor())
+        processor = RobustSamProcessor(image_processor=self.get_image_processor())
         processor.save_pretrained(self.tmpdirname)
 
         image_processor_add_kwargs = self.get_image_processor(do_normalize=False, padding_value=1.0)
 
-        processor = SamProcessor.from_pretrained(self.tmpdirname, do_normalize=False, padding_value=1.0)
+        processor = RobustSamProcessor.from_pretrained(self.tmpdirname, do_normalize=False, padding_value=1.0)
 
         self.assertEqual(processor.image_processor.to_json_string(), image_processor_add_kwargs.to_json_string())
-        self.assertIsInstance(processor.image_processor, SamImageProcessor)
+        self.assertIsInstance(processor.image_processor, RobustSamImageProcessor)
 
     def test_image_processor(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
 
         image_input = self.prepare_image_inputs()
 
@@ -208,7 +208,7 @@ class TFSamProcessorTest(unittest.TestCase):
     def test_post_process_masks(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
         dummy_masks = [tf.ones((1, 3, 5, 5))]
 
         original_sizes = [[1764, 2646]]
@@ -242,11 +242,11 @@ class TFSamProcessorTest(unittest.TestCase):
 
 @require_vision
 @require_torchvision
-class SamProcessorEquivalenceTest(unittest.TestCase):
+class RobustSamProcessorEquivalenceTest(unittest.TestCase):
     def setUp(self):
         self.tmpdirname = tempfile.mkdtemp()
-        image_processor = SamImageProcessor()
-        processor = SamProcessor(image_processor)
+        image_processor = RobustSamImageProcessor()
+        processor = RobustSamProcessor(image_processor)
         processor.save_pretrained(self.tmpdirname)
 
     def get_image_processor(self, **kwargs):
@@ -270,7 +270,7 @@ class SamProcessorEquivalenceTest(unittest.TestCase):
     def test_post_process_masks_equivalence(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
         dummy_masks = np.random.randint(0, 2, size=(1, 3, 5, 5)).astype(np.float32)
         tf_dummy_masks = [tf.convert_to_tensor(dummy_masks)]
         pt_dummy_masks = [torch.tensor(dummy_masks)]
@@ -291,7 +291,7 @@ class SamProcessorEquivalenceTest(unittest.TestCase):
     def test_image_processor_equivalence(self):
         image_processor = self.get_image_processor()
 
-        processor = SamProcessor(image_processor=image_processor)
+        processor = RobustSamProcessor(image_processor=image_processor)
 
         image_input = self.prepare_image_inputs()
 

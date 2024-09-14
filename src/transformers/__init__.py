@@ -691,6 +691,13 @@ _import_structure = {
         "SamPromptEncoderConfig",
         "SamVisionConfig",
     ],
+    "models.robustsam": [
+        "RobustSamConfig",
+        "RobustSamMaskDecoderConfig",
+        "RobustSamProcessor",
+        "RobustSamPromptEncoderConfig",
+        "RobustSamVisionConfig",
+    ],
     "models.seamless_m4t": [
         "SeamlessM4TConfig",
         "SeamlessM4TFeatureExtractor",
@@ -1191,6 +1198,7 @@ else:
     _import_structure["models.pvt"].extend(["PvtImageProcessor"])
     _import_structure["models.rt_detr"].extend(["RTDetrImageProcessor"])
     _import_structure["models.sam"].extend(["SamImageProcessor"])
+    _import_structure["models.robustsam"].extend(["RobustSamImageProcessor"])
     _import_structure["models.segformer"].extend(["SegformerFeatureExtractor", "SegformerImageProcessor"])
     _import_structure["models.seggpt"].extend(["SegGptImageProcessor"])
     _import_structure["models.siglip"].append("SiglipImageProcessor")
@@ -3149,6 +3157,12 @@ else:
             "SamPreTrainedModel",
         ]
     )
+    _import_structure["models.robustsam"].extend(
+        [
+            "RobustSamModel",
+            "RobustSamPreTrainedModel",
+        ]
+    )
     _import_structure["models.seamless_m4t"].extend(
         [
             "SeamlessM4TCodeHifiGan",
@@ -4265,6 +4279,12 @@ else:
         [
             "TFSamModel",
             "TFSamPreTrainedModel",
+        ]
+    )
+    _import_structure["models.robustsam"].extend(
+        [
+            "TFRobustSamModel",
+            "TFRobustSamPreTrainedModel",
         ]
     )
     _import_structure["models.segformer"].extend(
@@ -5458,6 +5478,13 @@ if TYPE_CHECKING:
         SamPromptEncoderConfig,
         SamVisionConfig,
     )
+    from .models.robustsam import (
+        RobustSamConfig,
+        RobustSamMaskDecoderConfig,
+        RobustSamProcessor,
+        RobustSamPromptEncoderConfig,
+        RobustSamVisionConfig,
+    )
     from .models.seamless_m4t import (
         SeamlessM4TConfig,
         SeamlessM4TFeatureExtractor,
@@ -5981,6 +6008,7 @@ if TYPE_CHECKING:
         from .models.pvt import PvtImageProcessor
         from .models.rt_detr import RTDetrImageProcessor
         from .models.sam import SamImageProcessor
+        from .models.robustsam import RobustSamImageProcessor
         from .models.segformer import SegformerFeatureExtractor, SegformerImageProcessor
         from .models.seggpt import SegGptImageProcessor
         from .models.siglip import SiglipImageProcessor
@@ -7564,6 +7592,10 @@ if TYPE_CHECKING:
             SamModel,
             SamPreTrainedModel,
         )
+        from .models.robustsam import (
+            RobustSamModel,
+            RobustSamPreTrainedModel,
+        )
         from .models.seamless_m4t import (
             SeamlessM4TCodeHifiGan,
             SeamlessM4TForSpeechToSpeech,
@@ -8471,6 +8503,10 @@ if TYPE_CHECKING:
         from .models.sam import (
             TFSamModel,
             TFSamPreTrainedModel,
+        )
+        from .models.robustsam import (
+            TFRobustSamModel,
+            TFRobustSamPreTrainedModel,
         )
         from .models.segformer import (
             TFSegformerDecodeHead,
