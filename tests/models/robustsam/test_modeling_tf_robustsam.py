@@ -401,7 +401,7 @@ class TFRobustSamModelTest(TFModelTesterMixin, PipelineTesterMixin, unittest.Tes
 
     @slow
     def test_model_from_pretrained(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")  # sam-vit-huge blows out our memory
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")  # sam-vit-huge blows out our memory
         self.assertIsNotNone(model)
 
     def check_pt_tf_outputs(self, tf_outputs, pt_outputs, model_class, tol=5e-4, name="outputs", attributes=None):
@@ -431,8 +431,8 @@ def prepare_dog_img():
 @slow
 class TFRobustSamModelIntegrationTest(unittest.TestCase):
     def test_inference_mask_generation_no_point(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
         inputs = processor(images=raw_image, return_tensors="tf")
@@ -444,8 +444,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(masks.numpy(), np.array([-4.1807, -3.4949, -3.4483]), atol=1e-2))
 
     def test_inference_mask_generation_one_point_one_bb(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
         input_boxes = [[[650, 900, 1000, 1250]]]
@@ -461,8 +461,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(masks.numpy(), np.array([-12.7657, -12.3683, -12.5985]), atol=2e-2))
 
     def test_inference_mask_generation_batched_points_batched_images(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
         input_points = [
@@ -497,8 +497,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(masks.numpy(), EXPECTED_MASKS, atol=3e-2))
 
     def test_inference_mask_generation_one_point_one_bb_zero(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
         input_boxes = [[[620, 900, 1000, 1255]]]
@@ -518,8 +518,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores[-1].numpy(), np.array(0.7894), atol=1e-4))
 
     def test_inference_mask_generation_one_point(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
 
@@ -544,8 +544,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores[-1].numpy(), np.array(0.9675), atol=1e-4))
 
     def test_inference_mask_generation_two_points(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
         raw_image = prepare_image()
 
         input_points = [[[400, 650], [800, 650]]]
@@ -567,8 +567,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores[-1].numpy(), np.array(0.9762), atol=1e-4))
 
     def test_inference_mask_generation_two_points_batched(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
 
@@ -586,8 +586,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores[1][-1], np.array(0.9637), atol=1e-4))
 
     def test_inference_mask_generation_one_box(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
 
@@ -601,8 +601,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores[-1].numpy(), np.array(0.7937), atol=1e-4))
 
     def test_inference_mask_generation_batched_image_one_point(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
         raw_dog_image = prepare_dog_img()
@@ -623,8 +623,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(np.allclose(scores_batched[1, :].numpy(), scores_single.numpy(), atol=1e-4))
 
     def test_inference_mask_generation_two_points_point_batch(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
 
@@ -648,8 +648,8 @@ class TFRobustSamModelIntegrationTest(unittest.TestCase):
         )
 
     def test_inference_mask_generation_three_boxes_point_batch(self):
-        model = TFRobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = TFRobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         raw_image = prepare_image()
 

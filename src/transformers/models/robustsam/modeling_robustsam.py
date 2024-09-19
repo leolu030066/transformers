@@ -34,7 +34,7 @@ from .configuration_robustsam import RobustSamConfig, RobustSamMaskDecoderConfig
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "RobustSamConfig"
-_CHECKPOINT_FOR_DOC = "jadechoghari/robustsam-vit-huge"
+_CHECKPOINT_FOR_DOC = "leolu030066/robustsam-vit-huge"
 
 # Copied from transformers.models.sam.modeling_sam.SamVisionEncoderOutput with Sam->RobustSam, and create encoder_features as the third output
 @dataclass
@@ -473,13 +473,8 @@ class CABlock(nn.Module):
         self.excitation_sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # print(x.shape)
-        # import ipdb
-        # ipdb.set_trace()
-        batch_size_combined = x.size(0) * x.size(1)
-        x_4d = x.view(batch_size_combined, x.size(2), x.size(3), x.size(4))
-        batch_size, channels, _, _ = x_4d.size()
-        squeeze = self.squeeze(x_4d).view(batch_size, channels)
+        batch_size, channels, _, _ = x.size()
+        squeeze = self.squeeze(x).view(batch_size, channels)
         excitation = self.excitation_fc1(squeeze)
         excitation = self.excitation_relu(excitation)
         excitation = self.excitation_fc2(excitation)
@@ -534,18 +529,14 @@ class SelectiveConv(nn.Module):
         self.relu = nn.LeakyReLU(inplace=True)
 
     def forward(self, x):
-        batch_size_combined = x.size(0) * x.size(1)
-        x_4d = x.view(batch_size_combined, x.size(2), x.size(3), x.size(4))  # [batch_size_1 * batch_size_2, channels, height, width]
-
         if self.first:
-            f_input = x_4d
-            s_input = x_4d
+            f_input = x
+            s_input = x
         else:
-
-            f_input = self.BN(x_4d.clone())
+            f_input = self.BN(x.clone())
             f_input = self.relu(f_input)
 
-            s_input = self.IN(x_4d.clone())
+            s_input = self.IN(x.clone())
             s_input = self.relu(s_input)
 
         out1 = self.conv1(f_input)
@@ -555,12 +546,6 @@ class SelectiveConv(nn.Module):
 
         att1, att2 = self.selector(out)
         out = torch.mul(out1, att1) + torch.mul(out2, att2)
-        print("ori: ",out.shape)
-
-        out = out.view(x.size(0), x.size(1), out.size(1), out.size(2), out.size(3))
-        print("recover: ",out.shape)
-        import ipdb
-        ipdb.set_trace()
         return out
 
 # RobustSAM components, and decouple the nn.Sequential
@@ -584,7 +569,7 @@ class DNCBlock_combined(nn.Module):
 
     def forward(self, x):
         x_in = self.SEMBlock(x)
-        x_all = torch.cat([x, x_in], dim=2)
+        x_all = torch.cat([x, x_in], dim=1)
         output = self.channel_attention(x_all)
 
         return output
@@ -771,8 +756,10 @@ class RobustSamMaskDecoder(nn.Module):
         """
         # Elaborate robust_features with complementary_features and final_image_embeddings for RobustSAM
         early_features = encoder_features[0].permute(0,1,4,2,3)
+        batch_size_combined = early_features.size(0) * early_features.size(1)
+        early_features_4d = early_features.view(batch_size_combined, early_features.size(2), early_features.size(3), early_features.size(4))
         # pass image features of different level through AMFG
-        complementary_features = self.fourier_first_layer_features(early_features, clear=clear)
+        complementary_features = self.fourier_first_layer_features(early_features_4d, clear=clear)
         final_image_embeddings = self.fourier_last_layer_features(image_embeddings, clear=clear)
 
         robust_features = complementary_features + final_image_embeddings # fuse image's complementary features and final embeddings
@@ -788,9 +775,7 @@ class RobustSamMaskDecoder(nn.Module):
 
         else: # RobustSAM output token
             output_tokens = torch.cat([self.iou_token.weight, self.custom_robust_token.weight], dim=0)
-
         output_tokens = output_tokens.repeat(batch_size, point_batch_size, 1, 1)
-
         if sparse_prompt_embeddings.sum().item() != 0:
             tokens = torch.cat((output_tokens, sparse_prompt_embeddings), dim=2)
         else:
@@ -839,11 +824,13 @@ class RobustSamMaskDecoder(nn.Module):
 
             else: # pass ROT through AOTG and corresponding MLP layers for ROT
                 token = mask_tokens_out[:, :, i, :]
-                token = self.custom_token_block(token)  #TODO: Be careful
+                batch_size_combined = token.size(0) * token.size(1)
+                token_2d = token.view(batch_size_combined, token.size(2))
+                token_2d = self.custom_token_block(token_2d)
+                token = token_2d.view(token.size(0), token_2d.size(0), token_2d.size(1))
                 hyper_in_list.append(self.robust_mlp(token))
 
-        hyper_in = torch.stack(hyper_in_list, dim=2)
-
+        hyper_in = torch.stack(hyper_in_list, dim=1)
         _, num_channels, height, width = upscaled_embedding_decoder.shape
 
         # at inference stage, clear=False
@@ -878,7 +865,6 @@ class RobustSamMaskDecoder(nn.Module):
 
         return outputs
 # Copied from transformers.models.sam.modeling_sam.SamPositionalEmbedding with Sam->RobustSam
-#TODO: need to check if it needs to adapt to RobustSAM version in the usage in SAMModel
 class RobustSamPositionalEmbedding(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -1614,31 +1600,47 @@ class RobustSamModel(RobustSamPreTrainedModel):
         return_dict: Optional[bool] = None,
         return_logits: bool = False,
         robust_token_only: bool = False,
+        clear = False,
         **kwargs,
     ) -> List[Dict[str, torch.Tensor]]:
-        r""" TODO: Rewrite usage
+        r"""
         Example:
 
         ```python
+        >>> import torch
+        >>> import numpy as np
         >>> from PIL import Image
         >>> import requests
-        >>> from transformers import AutoModel, AutoProcessor
+        >>> from transformers import RobustSamModel, RobustSamProcessor
 
-        >>> model = AutoModel.from_pretrained("facebook/sam-vit-base")
-        >>> processor = AutoProcessor.from_pretrained("facebook/sam-vit-base")
+        >>> device = "cuda" if torch.cuda.is_available() else "cpu"
+        >>> model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base").to(device)
+        >>> processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
-        >>> img_url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/model_doc/sam-car.png"
+
+        >>> img_url = "https://huggingface.co/leolu030066/robustsam-vit-base/resolve/main/demo/demo_images/haze.jpg"
         >>> raw_image = Image.open(requests.get(img_url, stream=True).raw).convert("RGB")
-        >>> input_points = [[[400, 650]]]  # 2D location of a window on the car
-        >>> inputs = processor(images=raw_image, input_points=input_points, return_tensors="pt")
+        >>> input_points = [[[182, 128], [152, 224], [309, 216]]]
+        >>> input_labels = [[1,1,1]]
+        >>> inputs = processor(images=np.array(raw_image), input_points=input_points, input_labels=input_labels,return_tensors="pt").to(device)
+        >>> with torch.no_grad():
+        >>>     output = model(multimask_output=False, return_logits=False,**inputs)
+        >>>     # output = model(multimask_output=False, return_logits=False,clear = True,**inputs)
 
-        >>> # Get segmentation mask
-        >>> outputs = model(**inputs)
+        >>> masks = processor.image_processor.post_process_masks(
+        >>>     output.pred_masks.cpu(), inputs["original_sizes"].cpu(), inputs["reshaped_input_sizes"].cpu()
+        >>> )
 
-        >>> # Postprocess masks
-        >>> masks = processor.post_process_masks(
-        ...     outputs.pred_masks, inputs["original_sizes"], inputs["reshaped_input_sizes"]
-        ... )
+        >>> scores = output.iou_scores
+
+        # raw_image_np = np.array(raw_image)
+        # mask_np = masks[0].squeeze().cpu().numpy()
+        # mask_expanded = np.stack([mask_np]*3, axis=-1)
+        # masked_image = np.zeros_like(raw_image_np)
+        # masked_image[mask_expanded] = raw_image_np[mask_expanded]
+        # masked_image_pil = Image.fromarray(masked_image)
+        # masked_image_pil.save('./point_haze.png')
+
         ```
         """
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -1722,9 +1724,7 @@ class RobustSamModel(RobustSamPreTrainedModel):
         # Compute clear for RobustSAM
         # degraded_index = int(0.5 * len(batch_size))
         # clear = True if i < degraded_index else False  TODO: half of samples should be degraded, and half of samples should be clean during training
-        clear = False   #Assume the input images are degraded during inference
 
-        # TODO: Becareful to check the encoder_features size to match the mask_decoder
         low_res_masks, iou_predictions, robust_embeddings, robust_token, mask_decoder_attentions = self.mask_decoder(
             image_embeddings=image_embeddings,
             image_positional_embeddings=image_positional_embeddings,
@@ -1733,7 +1733,7 @@ class RobustSamModel(RobustSamPreTrainedModel):
             multimask_output=multimask_output,
             encoder_features=encoder_features.unsqueeze(0).unsqueeze(0),
             robust_token_only=robust_token_only,
-            clear=False,
+            clear=clear,
             attention_similarity=attention_similarity,
             target_embedding=target_embedding,
             output_attentions=output_attentions,

@@ -445,7 +445,7 @@ class RobustSamModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCas
 
     @slow
     def test_model_from_pretrained(self):
-        model_name = "jadechoghari/robustsam-vit-huge"
+        model_name = "leolu030066/robustsam-vit-huge"
         model = RobustSamModel.from_pretrained(model_name)
         self.assertIsNotNone(model)
 
@@ -471,8 +471,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         backend_empty_cache(torch_device)
 
     def test_inference_mask_generation_no_point(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -488,8 +488,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(masks, torch.tensor([-4.1800, -3.4948, -3.4481]).to(torch_device), atol=2e-4))
 
     def test_inference_mask_generation_one_point_one_bb(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -512,8 +512,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         )
 
     def test_inference_mask_generation_batched_points_batched_images(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -554,8 +554,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(masks, EXPECTED_MASKS, atol=1e-3))
 
     def test_inference_mask_generation_one_point_one_bb_zero(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -580,8 +580,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores[-1], torch.tensor(0.7894), atol=1e-4))
 
     def test_inference_mask_generation_one_point(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -611,8 +611,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores[-1], torch.tensor(0.9675), atol=1e-4))
 
     def test_inference_mask_generation_two_points(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -641,8 +641,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores[-1], torch.tensor(0.9762), atol=1e-4))
 
     def test_inference_mask_generation_two_points_batched(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -663,8 +663,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores[1][-1], torch.tensor(0.9637), atol=1e-4))
 
     def test_inference_mask_generation_one_box(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -681,8 +681,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores[-1], torch.tensor(0.7937), atol=1e-4))
 
     def test_inference_mask_generation_batched_image_one_point(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -710,8 +710,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(scores_batched[1, :], scores_single, atol=1e-4))
 
     def test_inference_mask_generation_two_points_point_batch(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -734,8 +734,8 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         )
 
     def test_inference_mask_generation_three_boxes_point_batch(self):
-        model = RobustSamModel.from_pretrained("jadechoghari/robustsam-vit-base")
-        processor = RobustSamProcessor.from_pretrained("jadechoghari/robustsam-vit-base")
+        model = RobustSamModel.from_pretrained("leolu030066/robustsam-vit-base")
+        processor = RobustSamProcessor.from_pretrained("leolu030066/robustsam-vit-base")
 
         model.to(torch_device)
         model.eval()
@@ -760,7 +760,7 @@ class RobustSamModelIntegrationTest(unittest.TestCase):
         torch.testing.assert_close(iou_scores, EXPECTED_IOU, atol=1e-4, rtol=1e-4)
 
     def test_dummy_pipeline_generation(self):
-        generator = pipeline("mask-generation", model="jadechoghari/robustsam-vit-base", device=torch_device)
+        generator = pipeline("mask-generation", model="leolu030066/robustsam-vit-base", device=torch_device)
         raw_image = prepare_image()
 
         _ = generator(raw_image, points_per_batch=64)
