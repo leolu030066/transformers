@@ -191,7 +191,7 @@ class RobustSamLayerNorm(nn.Module):
 # Copied from transformers.models.sam.modeling_sam.RobustSamAttention with Sam->RobustSam, and create return_att = False in __init__ and opt = None in forward
 class RobustSamAttention(nn.Module):
     """
-    SAM's attention layer that allows for downscaling the size of the embedding after projection to queries, keys, and
+    RobustSAM's attention layer that allows for downscaling the size of the embedding after projection to queries, keys, and
     values.
     """
 

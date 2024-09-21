@@ -103,24 +103,24 @@ class TFRobustSamImageSegmentationOutput(ModelOutput):
             heads.
     """
 
-    iou_scores: torch.FloatTensor = None
-    pred_masks: torch.FloatTensor = None
-    robust_embeddings: torch.FloatTensor  = None
-    robust_token: torch.FloatTensor  = None
-    vision_hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
-    vision_attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
-    mask_decoder_attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
+    iou_scores: tf.Tensor = None
+    pred_masks: tf.Tensor = None
+    robust_embeddings: tf.Tensor = None
+    robust_token: tf.Tensor  = None
+    vision_hidden_states: Tuple[tf.Tensor, ...] | None = None
+    vision_attentions: Tuple[tf.Tensor, ...] | None = None
+    mask_decoder_attentions: Tuple[tf.Tensor, ...] | None = None
 
 # Copied from transformers.models.sam.modeling_sam.SamPatchEmbeddings with Sam->RobustSam
-class RobustSamPatchEmbeddings(nn.Module):
+class TFRobustSamPatchEmbeddings(keras.layers.Layer):
     """
     This class turns `pixel_values` of shape `(batch_size, num_channels, height, width)` into the initial
     `hidden_states` (patch embeddings) of shape `(batch_size, seq_length, hidden_size)` to be consumed by a
     Transformer.
     """
 
-    def __init__(self, config):
-        super().__init__()
+    def __init__(self, config, **kwargs):
+        super().__init__(**kwargs)
         image_size, patch_size = config.image_size, config.patch_size
         num_channels, hidden_size = config.num_channels, config.hidden_size
         image_size = image_size if isinstance(image_size, collections.abc.Iterable) else (image_size, image_size)
@@ -131,10 +131,12 @@ class RobustSamPatchEmbeddings(nn.Module):
         self.num_channels = num_channels
         self.num_patches = num_patches
 
-        self.projection = nn.Conv2d(num_channels, hidden_size, kernel_size=patch_size, stride=patch_size)
+        self.projection = keras.layers.Conv2D(
+            hidden_size, kernel_size=patch_size, strides=patch_size, name="projection"
+        )
 
-    def forward(self, pixel_values):
-        batch_size, num_channels, height, width = pixel_values.shape
+    def call(self, pixel_values):
+        batch_size, num_channels, height, width = shape_list(pixel_values)
         if num_channels != self.num_channels:
             raise ValueError(
                 "Make sure that the channel dimension of the pixel values match with the one set in the configuration."
@@ -143,64 +145,81 @@ class RobustSamPatchEmbeddings(nn.Module):
             raise ValueError(
                 f"Input image size ({height}*{width}) doesn't match model ({self.image_size[0]}*{self.image_size[1]})."
             )
-        embeddings = self.projection(pixel_values).permute(0, 2, 3, 1)
+        embeddings = self.projection(tf.transpose(pixel_values, perm=[0, 2, 3, 1]))
         return embeddings
+    
+    def build(self, input_shape=None):
+        if self.built:
+            return
+        self.built = True
+        if getattr(self, "projection", None) is not None:
+            with tf.name_scope(self.projection.name):
+                self.projection.build([None, None, None, self.num_channels])
 
 # Copied from transformers.models.sam.modeling_sam.SamMLPBlock with Sam->RobustSam
-class RobustSamMLPBlock(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.lin1 = nn.Linear(config.hidden_size, config.mlp_dim)
-        self.lin2 = nn.Linear(config.mlp_dim, config.hidden_size)
+class TFRobustSamMLPBlock(keras.layers.Layer):
+    def __init__(self, config, **kwargs):
+        super().__init__(**kwargs)
+        self.lin1 = keras.layers.Dense(config.mlp_dim, name="lin1")
+        self.lin2 = keras.layers.Dense(config.hidden_size, name="lin2")
         self.act = ACT2FN[config.hidden_act]
+        self.config = config
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def call(self, hidden_states: tf.Tensor) -> tf.Tensor:
         hidden_states = self.lin1(hidden_states)
         hidden_states = self.act(hidden_states)
         hidden_states = self.lin2(hidden_states)
         return hidden_states
 
+    def build(self, input_shape=None):
+        if self.built:
+            return
+        self.built = True
+        if getattr(self, "lin1", None) is not None:
+            with tf.name_scope(self.lin1.name):
+                self.lin1.build([None, None, self.config.hidden_size])
+        if getattr(self, "lin2", None) is not None:
+            with tf.name_scope(self.lin2.name):
+                self.lin2.build([None, None, self.config.mlp_dim])
 
 # Copied from transformers.models.convnext.modeling_convnext.ConvNextLayerNorm with ConvNext->Sam
 # Copied from transformers.models.sam.modeling_sam.SamLayerNorm with Sam->RobustSam
-class RobustSamLayerNorm(nn.Module):
+class TFRobustSamLayerNorm(keras.layers.Layer):
     r"""LayerNorm that supports two data formats: channels_last (default) or channels_first.
     The ordering of the dimensions in the inputs. channels_last corresponds to inputs with shape (batch_size, height,
     width, channels) while channels_first corresponds to inputs with shape (batch_size, channels, height, width).
     """
 
-    def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(normalized_shape))
-        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+    def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last", **kwargs):
+        super().__init__(**kwargs)
         self.eps = eps
         self.data_format = data_format
+        self.normalized_shape = normalized_shape
         if self.data_format not in ["channels_last", "channels_first"]:
             raise NotImplementedError(f"Unsupported data format: {self.data_format}")
-        self.normalized_shape = (normalized_shape,)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def build(self, input_shape):
+        self.weight = self.add_weight(shape=self.normalized_shape, initializer="ones", name="weight")
+        self.bias = self.add_weight(shape=self.normalized_shape, initializer="zeros", name="bias")
+        super().build(input_shape)
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
         if self.data_format == "channels_last":
-            x = torch.nn.functional.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+            x = functional_layernorm(x, weight=self.weight, bias=self.bias, epsilon=self.eps, axis=-1)
         elif self.data_format == "channels_first":
-            input_dtype = x.dtype
-            x = x.float()
-            u = x.mean(1, keepdim=True)
-            s = (x - u).pow(2).mean(1, keepdim=True)
-            x = (x - u) / torch.sqrt(s + self.eps)
-            x = x.to(dtype=input_dtype)
-            x = self.weight[:, None, None] * x + self.bias[:, None, None]
+            x = functional_layernorm(x, weight=self.weight, bias=self.bias, epsilon=self.eps, axis=1)
         return x
 
+
 # Copied from transformers.models.sam.modeling_sam.RobustSamAttention with Sam->RobustSam, and create return_att = False in __init__ and opt = None in forward
-class RobustSamAttention(nn.Module):
+class TFRobustSamAttention(keras.layers.Layer):
     """
-    SAM's attention layer that allows for downscaling the size of the embedding after projection to queries, keys, and
+    RobustSAM's attention layer that allows for downscaling the size of the embedding after projection to queries, keys, and
     values.
     """
 
-    def __init__(self, config, downsample_rate=None, return_att: bool=False): #Create return_att for RobustSAM
-        super().__init__()
+    def __init__(self, config, downsample_rate=None,return_att: bool=False, **kwargs): #Create return_att for RobustSAM
+        super().__init__(**kwargs)
         self.hidden_size = config.hidden_size
 
         downsample_rate = config.attention_downsample_rate if downsample_rate is None else downsample_rate
@@ -210,52 +229,70 @@ class RobustSamAttention(nn.Module):
         if self.internal_dim % config.num_attention_heads != 0:
             raise ValueError("num_attention_heads must divide hidden_size.")
 
-        self.q_proj = nn.Linear(self.hidden_size, self.internal_dim)
-        self.k_proj = nn.Linear(self.hidden_size, self.internal_dim)
-        self.v_proj = nn.Linear(self.hidden_size, self.internal_dim)
-        self.out_proj = nn.Linear(self.internal_dim, self.hidden_size)
+        self.q_proj = keras.layers.Dense(self.internal_dim, name="q_proj")
+        self.k_proj = keras.layers.Dense(self.internal_dim, name="k_proj")
+        self.v_proj = keras.layers.Dense(self.internal_dim, name="v_proj")
+        self.out_proj = keras.layers.Dense(self.hidden_size, name="out_proj")
         self.return_att = return_att #Initialize return_att for RobustSAM
 
-    def _separate_heads(self, hidden_states: Tensor, num_attention_heads: int) -> Tensor:
-        batch, point_batch_size, n_tokens, channel = hidden_states.shape
+    def _separate_heads(self, hidden_states: tf.Tensor, num_attention_heads: int) -> tf.Tensor:
+        batch, point_batch_size, n_tokens, channel = shape_list(hidden_states)
         c_per_head = channel // num_attention_heads
-        hidden_states = hidden_states.reshape(batch * point_batch_size, n_tokens, num_attention_heads, c_per_head)
-        return hidden_states.transpose(1, 2)
+        hidden_states = tf.reshape(
+            hidden_states, (batch * point_batch_size, n_tokens, num_attention_heads, c_per_head)
+        )
+        return tf.transpose(hidden_states, perm=[0, 2, 1, 3])
 
-    def _recombine_heads(self, hidden_states: Tensor, point_batch_size: int) -> Tensor:
-        batch, n_heads, n_tokens, c_per_head = hidden_states.shape
-        hidden_states = hidden_states.transpose(1, 2)
-        return hidden_states.reshape(batch // point_batch_size, point_batch_size, n_tokens, n_heads * c_per_head)
+    def _recombine_heads(self, hidden_states: tf.Tensor, point_batch_size: int) -> tf.Tensor:
+        batch, n_heads, n_tokens, c_per_head = shape_list(hidden_states)
+        hidden_states = tf.transpose(hidden_states, perm=[0, 2, 1, 3])
+        return tf.reshape(
+            hidden_states,
+            (batch // tf.reduce_max([1, point_batch_size]), point_batch_size, n_tokens, n_heads * c_per_head),
+        )
 
-    def forward(self, query: Tensor, key: Tensor, value: Tensor, attention_similarity: Tensor = None, opt = None) -> Tensor:
+    def call(self, query: tf.Tensor, key: tf.Tensor, value: tf.Tensor, opt = None) -> tf.Tensor:
         # Input projections
         query = self.q_proj(query)
         key = self.k_proj(key)
         value = self.v_proj(value)
 
-        point_batch_size = query.shape[1]
+        point_batch_size = shape_list(query)[1]
         # Separate into heads
         query = self._separate_heads(query, self.num_attention_heads)
         key = self._separate_heads(key, self.num_attention_heads)
         value = self._separate_heads(value, self.num_attention_heads)
 
         # RobustSamAttention
-        _, _, _, c_per_head = query.shape
-        attn = query @ key.permute(0, 1, 3, 2)  # batch_size * point_batch_size  x N_heads x N_tokens x N_tokens
-        attn = attn / (c_per_head**0.5)
-        attn = torch.softmax(attn, dim=-1)
-
-        if attention_similarity is not None:
-            attn = attn + attention_similarity
-            attn = torch.softmax(attn, dim=-1)
+        _, _, _, c_per_head = shape_list(query)
+        attn = tf.matmul(
+            query, tf.transpose(key, perm=[0, 1, 3, 2])
+        )  # batch_size * point_batch_size  x N_heads x N_tokens x N_tokens
+        attn = attn / tf.math.sqrt(float(c_per_head))
+        attn = tf.nn.softmax(attn, axis=-1)
 
         # Get output
-        out = attn @ value
+        out = tf.matmul(attn, value)
         out = self._recombine_heads(out, point_batch_size)
         out = self.out_proj(out)
 
         return out
-
+    def build(self, input_shape=None):
+        if self.built:
+            return
+        self.built = True
+        if getattr(self, "q_proj", None) is not None:
+            with tf.name_scope(self.q_proj.name):
+                self.q_proj.build([None, None, self.hidden_size])
+        if getattr(self, "k_proj", None) is not None:
+            with tf.name_scope(self.k_proj.name):
+                self.k_proj.build([None, None, self.hidden_size])
+        if getattr(self, "v_proj", None) is not None:
+            with tf.name_scope(self.v_proj.name):
+                self.v_proj.build([None, None, self.hidden_size])
+        if getattr(self, "out_proj", None) is not None:
+            with tf.name_scope(self.out_proj.name):
+                self.out_proj.build([None, None, self.internal_dim])
 # Copied from transformers.models.sam.modeling_sam.SamTwoWayAttentionBlock with Sam->RobustSam
 class RobustSamTwoWayAttentionBlock(nn.Module):
     def __init__(self, config, attention_downsample_rate: int = 2, skip_first_layer_pe: bool = False):
